@@ -10,6 +10,7 @@ class conexionBD{
     public function conexionPDO(){
 
         $host = getenv('DB_HOST') ?: 'localhost';
+        $port = getenv('DB_PORT') ?: '3306';
         $db = getenv('DB_NAME') ?: 'sis_tramite';
         $user = getenv('DB_USER') ?: 'root';
         $password = getenv('DB_PASSWORD') ?: '';
@@ -17,7 +18,7 @@ class conexionBD{
         try{ //Manejo de excepciones
 
             //Crear la conexion con PDO
-            $pdo = new PDO("mysql:host=$host;dbname=$db",$user,$password);
+            $pdo = new PDO("mysql:host=$host;port=$port;dbname=$db",$user,$password);
 
             //Configurar el manejo de errores con PDO
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
