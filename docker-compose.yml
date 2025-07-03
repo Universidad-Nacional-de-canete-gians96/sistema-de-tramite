@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: sistema_tramite_app
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    volumes:
+      # Volúmenes para persistir archivos subidos
+      - tramite_documentos:/var/www/html/controller/tramite/documentos
+      - tramite_area_documentos:/var/www/html/controller/tramite_area/documentos
+      - persona_fotos:/var/www/html/controller/persona/FOTO
+    environment:
+      DB_HOST: db
+      DB_USER: user_tramite
+      DB_PASSWORD: password_tramite
+      DB_NAME: sis_tramite
+    restart: always
+
+  db:
+    image: mysql:8.4
+    container_name: sistema_tramite_db
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: sis_tramite
+      MYSQL_USER: user_tramite
+      MYSQL_PASSWORD: password_tramite
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sis_tramite.sql:/docker-entrypoint-initdb.d/sis_tramite.sql
+    ports:
+      - "3306:3306"
+    restart: always
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: sistema_tramite_phpmyadmin
+    environment:
+      PMA_HOST: db
+      PMA_USER: user_tramite
+      PMA_PASSWORD: password_tramite
+    ports:
+      - "8081:80"
+    depends_on:
+      - db
+    restart: always
+
+volumes:
+  mysql_data:
+  tramite_documentos:
+  tramite_area_documentos:
+  persona_fotos:

@@ -1,0 +1,22 @@
+# Archivos del sistema
+.git
+.gitignore
+.DS_Store
+.dockerignore
+Dockerfile
+docker-compose.yml
+README.md
+
+# Archivos subidos por los usuarios (serán montados como volúmenes)
+controller/tramite/documentos/*
+controller/tramite_area/documentos/*
+controller/persona/FOTO/*
+
+# Dependencias de PHP
+vendor/
+composer.lock
+
+# Otros archivos que pueden ser ignorados
+*.log
+*.swp
+*.bak
