@@ -1,7 +1,7 @@
 var tbl_tramite;
 function listar_tramite(){
     tbl_tramite = $("#tabla_tramite").DataTable({
-        "ordering":[[0, 'asc']],   
+        "ordering":true,  
         "bLengthChange":true,
         "searching": { "regex": false },
         "lengthMenu": [ [10, 25, 50, 100, -1], [10, 25, 50, 100, "All"] ],
@@ -11,7 +11,21 @@ function listar_tramite(){
         "processing": true,
         "ajax":{
             "url":"../controller/tramite/controlador_listar_tramite.php",
-            type:'POST'
+            type:'POST',
+            "data": function(d) {
+                let fechaInicio = $("#reporte_fecha_inicio").val();
+                let fechaFin = $("#reporte_fecha_fin").val();
+                let estado = $("#reporte_estado").val();
+                let area = $("#select_area_filtro").val();
+
+                // Si ambas fechas están llenas, las enviamos
+                d.fecha_inicio = (fechaInicio !== "" && fechaFin !== "") ? fechaInicio : "";
+                d.fecha_fin    = (fechaInicio !== "" && fechaFin !== "") ? fechaFin    : "";
+
+                // Enviamos estado y área aunque las fechas estén vacías
+                d.estado = estado;
+                d.area   = area;
+            }
         },
         "columns":[
             {"data":"tramite_id"},
@@ -25,16 +39,35 @@ function listar_tramite(){
             {"defaultContent":"<button class='seguimiento btn btn-success btn-sm'><i class='fa fa-search'></i></button>"},
             {"data":"tramite_estado",
                 render: function(data,type,row){
-                if(data=='PENDIENTE'){
-                    return '<span class="badge bg-warning">PENDIENTE</span>'
-                }else if(data=='RECHAZADO'){
-                    return '<span class="badge bg-danger">RECHAZADO</span>'
-                }else if(data=='ARCHIVADO'){
-                    return '<span class="badge bg-gray">ARCHIVADO</span>'
-                }else{
-                    return '<span class="badge bg-success">ACEPTADO</span>'
+                    let estado = '';
+                    let badgeExtra = '';
+                    const estadoActual = data;
+                    const fechaPendiente  = row.pendiente_fecha;
 
-                }
+                    // Calcular días transcurridos desde la fecha de registro
+                    if (estadoActual === 'PENDIENTE' || estadoActual === 'EN ESPERA') {
+                        const fechaInicio = new Date(fechaPendiente );
+                        const hoy = new Date();
+                        const diffTime = Math.abs(hoy - fechaInicio);
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                        if (diffDays >= 2) {
+                            badgeExtra = ` <span class="badge bg-danger">+${diffDays} días</span>`;
+                        }
+                    }
+
+                    // Badge de estado
+                    if (estadoActual === 'PENDIENTE') {
+                        estado = '<span class="badge bg-warning">PENDIENTE</span>';
+                    } else if (estadoActual === 'RECHAZADO') {
+                        estado = '<span class="badge bg-danger">RECHAZADO</span>';
+                    } else if (estadoActual === 'ARCHIVADO') {
+                        estado = '<span class="badge bg-gray">ARCHIVADO</span>';
+                    } else {
+                        estado = '<span class="badge bg-success">ACEPTADO</span>';
+                    }
+
+                    return estado + badgeExtra;
                 }
             },
         ],
@@ -99,7 +132,7 @@ $('#tabla_tramite').on('click','.mas',function(){
 
     // Obtener archivo usando Ajax
     $.ajax({
-        url: '../controller/tramite/controlador_obtener_archivo.php',
+        url: '/controller/tramite/controlador_obtener_archivo.php',
         type: 'POST',
         data: { id_tramite: data.tramite_id },
         dataType: 'json',
@@ -137,6 +170,25 @@ function Cargar_select_Area(){
             document.getElementById('select_area_d').innerHTML=cadena;
         }
     })
+}
+
+function Cargar_select_Area_filtrado(){
+    $.ajax({
+        url: "../controller/usuario/controlador_cargar_select_area.php",
+        type: 'POST',
+    }).done(function(resp) {
+        let data = JSON.parse(resp);
+        let cadena = "<option value='0'>Todos</option>"; // ✅ Agrega opción 'Todos'
+        
+        if (data.length > 0) {
+            for (let i = 0; i < data.length; i++) {
+                cadena += "<option value='" + data[i][0] + "'>" + data[i][1] + "</option>";
+            }
+        } else {
+            cadena += "<option value=''>No hay áreas disponibles</option>";
+        }
+        document.getElementById('select_area_filtro').innerHTML = cadena;
+    });
 }
 
 function Cargar_Select_Tipo(){
@@ -329,8 +381,8 @@ function mostrarArchivoTramite(archivoRuta) {
     }
 
     // Construcción de la URL asegurando que tenga "controller/tramite/documentos/"
-    let baseURL = window.location.origin + "/sw_tramite/";
-    let fullURL = baseURL + archivoRuta;
+    let baseURL = window.location.origin;
+    let fullURL = baseURL + '/' + archivoRuta;
 
     console.log("🔍 URL corregida para el archivo:", fullURL); // 👈 Para depuración
 

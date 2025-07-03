@@ -1,6 +1,128 @@
+function Cargar_select_Area(callback) {
+    $.ajax({
+        url: "../controller/usuario/controlador_cargar_select_area.php",
+        type: "POST"
+    }).done(function(resp) {
+        let data = JSON.parse(resp);
+        let cadena = "<option value='' disabled selected>Seleccione un Área</option>";
+
+        if (data.length > 0) {
+            for (let i = 0; i < data.length; i++) {
+                cadena += `<option value="${data[i][0]}">${data[i][1]}</option>`;
+            }
+        } else {
+            cadena += "<option value=''>No hay áreas disponibles</option>";
+        }
+
+        $("#select_area_p").html(cadena);
+        $("#select_area_d").html(cadena);
+
+        // Aplicamos select2 (si aún no está aplicado)
+        $('#select_area_p').select2();
+        $('#select_area_d').select2();
+
+        if (typeof callback === 'function') callback();
+    });
+}
+
+function Cargar_Select_Tipo(callback) {
+    $.ajax({
+        url: "../controller/tramite/controlador_cargar_select_tipo.php",
+        type: "POST"
+    }).done(function(resp) {
+        let data = JSON.parse(resp);
+        let cadena = "<option value='' disabled selected>SELECCIONAR TIPO DOCUMENTO</option>";
+
+        if (data.length > 0) {
+            for (let i = 0; i < data.length; i++) {
+                cadena += `<option value="${data[i][0]}">${data[i][1]}</option>`;
+            }
+        } else {
+            cadena += "<option value=''>No hay tipos disponibles</option>";
+        }
+
+        $("#select_tipo").html(cadena);
+        $('#select_tipo').select2();
+
+        if (typeof callback === 'function') callback();
+    });
+}
+
+function Cargar_select_Area_Destino(areaId) {
+    $.ajax({
+        url: "../controller/usuario/controlador_cargar_select_area.php",
+        type: "POST"
+    }).done(function(resp) {
+        let data = JSON.parse(resp);
+        let cadena = "<option value='' disabled selected>Seleccione un Área</option>";
+
+        if (data.length > 0) {
+            for (let i = 0; i < data.length; i++) {
+                if (data[i][0] !== areaId) {
+                    cadena += `<option value="${data[i][0]}">${data[i][1]}</option>`;
+                }
+            }
+        } else {
+            cadena += "<option value=''>No hay áreas disponibles</option>";
+        }
+
+        $("#select_area_d_deri").html(cadena);
+        $('#select_area_d_deri').select2();
+    });
+}
+
+function prepararYMostrarModalMas(data) {
+    // Cargar selects primero
+    Cargar_select_Area(function () {
+        Cargar_Select_Tipo(function () {
+            // Llenado de datos de remitente
+            $('#txt_dni').val(data.remitente_dni);
+            $('#txt_nom').val(data.remitente_nombre);
+            $('#txt_apepat').val(data.remitente_apepat);
+            $('#txt_apemat').val(data.remitente_apemat);
+            $('#txt_celular').val(data.remitente_celular);
+            $('#txt_email').val(data.remitente_email);
+            $('#txt_dire').val(data.remitente_direccion);
+
+            // Presentación
+            let tipo = data.tramite_doc_representacion.toUpperCase();
+            $('#rad_presentacion1').prop('checked', tipo.includes("NATURAL","A NOMBRE PROPIO"));
+            $('#rad_presentacion2').prop('checked', tipo.includes("OTRA PERSONA NATURAL"));
+            $('#rad_presentacion3').prop('checked', tipo.includes("JURIDICA"));
+            $('#div_juridico').toggle(tipo.includes("JURIDICA"));
+
+            $('#txt_ruc').val(data.tramite_doc_ruc);
+            $('#txt_razon').val(data.tramite_doc_razon);
+
+            // Documentos
+            $('#select_area_p').val(data.area_origen).trigger('change.select2');
+            $('#select_area_d').val(data.area_destino).trigger('change.select2');
+            $('#select_tipo').val(data.tipodocumento_id).trigger('change.select2');
+
+            $('#txt_ndocumento').val(data.tramite_nrodocumento);
+            $('#txt_folio').val(data.tramite_folio);
+            $('#txt_asunto').val(data.tramite_asunto);
+
+            // Mostrar archivo
+            if (data.tramite_archivo) {
+                $('#tab_archivo').html(`<p><strong>Documento Adjunto:</strong></p><a href="/${data.tramite_archivo}" target="_blank">📄 Ver documento</a>`);
+            } else {
+                $('#tab_archivo').html(`<p>No se adjuntó ningún documento.</p>`);
+            }
+
+            // Mostrar modal
+            $('#nro_expe').html(data.tramite_id);
+            $('#modal_mas').modal('show');
+        });
+    });
+
+    console.log("Datos del trámite:", data); // Para depuración
+    mostrarArchivoTramite(data.tramite_archivo); // Mostrar el archivo del trámite
+}
+
+
 var tbl_tramite;
-function listar_tramite(estado = 'PENDIENTE'){
-    let idusuario = document.getElementById('txtprincipalid').value;
+function listar_tramite(){
     tbl_tramite = $("#tabla_tramite").DataTable({
         "ordering":false,   
         "bLengthChange":true,
@@ -13,9 +135,16 @@ function listar_tramite(estado = 'PENDIENTE'){
         "ajax":{
             "url":"../controller/tramite_area/controlador_listar_tramite.php",
             type:'POST',
-            data: {
-                idusuario: idusuario,
-                estado: estado 
+            data: function(d){
+                let idusuario = document.getElementById('txtprincipalid').value; // Obtener el ID del usuario
+                let fechaInicio = $("#reporte_fecha_inicio").val();
+                let fechaFin = $("#reporte_fecha_fin").val();
+
+                // Si ambas fechas están llenas, las enviamos
+                d.idusuario = idusuario;  // Asegúrate de enviar el ID del usuario
+                d.fecha_inicio = (fechaInicio !== "" && fechaFin !== "") ? fechaInicio : "";
+                d.fecha_fin = (fechaInicio !== "" && fechaFin !== "") ? fechaFin : "";
+                d.estado = '';  // Enviamos el estado
             }
         },
         "columns":[
@@ -29,27 +158,49 @@ function listar_tramite(estado = 'PENDIENTE'){
             {"defaultContent":"<button class='mas btn btn-danger btn-sm'><i class='fa fa-search'></i></button>"},
             {"defaultContent":"<button class='seguimiento btn btn-success btn-sm'><i class='fa fa-search'></i></button>"},
             {"data":"tramite_estado",
-                render: function(data,type,row){
-                if(data=='PENDIENTE'){
-                    return '<span class="badge bg-warning">PENDIENTE</span>'
-                }else if(data=='RECHAZADO'){
-                    return '<span class="badge bg-danger">RECHAZADO</span>'
-                }else{
-                    return '<span class="badge bg-success">ACEPTADO</span>'
+                render: function(data, type, row) {
+                    let estado = '';
+                    let badgeExtra = '';
+                    const estadoActual = data;
+                    const fechaPendiente  = row.pendiente_fecha;
 
-                }
+                    if (estadoActual === 'PENDIENTE' && fechaPendiente ) {
+                        const fechaInicio = new Date(fechaPendiente );
+                        const hoy = new Date();
+                        const diffTime = Math.abs(hoy - fechaInicio);
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                        if (diffDays >= 2) {
+                            badgeExtra = ` <span class="badge bg-danger">+${diffDays} días</span>`;
+                        }
+                    }
+
+                    if (estadoActual === 'PENDIENTE') {
+                        estado = '<span class="badge bg-warning">PENDIENTE</span>';
+                    } else if (estadoActual === 'RECHAZADO') {
+                        estado = '<span class="badge bg-danger">RECHAZADO</span>';
+                    } else {
+                        estado = '<span class="badge bg-success">ACEPTADO</span>';
+                    }
+
+                    return estado + badgeExtra;
                 }
             },
-            {"data":"tramite_estado",
-                render: function(data,type,row){
-                if(data=='PENDIENTE'){
-                    return "<button class='accion btn btn-info btn-sm'><i class='fas fa-share-square'></i></button>&nbsp;\
-                            <button class='aceptar btn btn-secondary btn-sm'><i class='fas fa-ellipsis-h text-white'></i></button>";
-                }else{
-                    return "<button class='archivar btn btn-warning btn-sm'><i class='fas fa-archive'></i></button>"
-                }
-                }
-            },
+            // {"data":"tramite_estado",
+            //     render: function(data,type,row){
+
+            //         let areaActual = row.area_destino_id;
+
+            //         if(data=='PENDIENTE' && areaActual == 'MESA DE PARTES'){
+            //             return "<button class='accion btn btn-info btn-sm'><i class='fas fa-share-square'></i></button>&nbsp";
+            //         }else if(data=='PENDIENTE' && areaActual != 'MESA DE PARTES'){
+            //             return "<button class='accion btn btn-info btn-sm'><i class='fas fa-share-square'></i></button>&nbsp;\
+            //                     <button class='aceptar btn btn-secondary btn-sm'><i class='fas fa-ellipsis-h text-white'></i></button>";
+            //         }else{
+            //             return "<button class='archivar btn btn-warning btn-sm'><i class='fas fa-archive'></i></button>"
+            //         }
+            //     }
+            // },
         ],
   
         "language":idioma_espanol,
@@ -57,73 +208,25 @@ function listar_tramite(estado = 'PENDIENTE'){
     });
 }
 
-$('#tabla_tramite').on('click','.seguimiento',function(){
-    var data = tbl_tramite.row($(this).parents('tr')).data();//En tamaño escritorio
-    if(tbl_tramite.row(this).child.isShown()){
-        var data = tbl_tramite.row(this).data();
-    }//Permite llevar los datos cuando es tamaño celular y usas  el responsive de datatable
+$('#tabla_tramite').on('click', '.seguimiento', function() {
+    var data = tbl_tramite.row($(this).parents('tr')).data();
+    if(tbl_tramite.row(this).child.isShown()) {
+        data = tbl_tramite.row(this).data();
+    }
+
     $("#modalseguir").modal('show');
     document.getElementById('nro_expe1').innerHTML = data.tramite_id;
     listar_tramite_seguimiento(data.tramite_id);
-})
+});
 
-
-$('#tabla_tramite').on('click','.mas',function(){
-    var data = tbl_tramite.row($(this).parents('tr')).data();//En tamaño escritorio
-    if(tbl_tramite.row(this).child.isShown()){
-        var data = tbl_tramite.row(this).data();
-    }//Permite llevar los datos cuando es tamaño celular y usas  el responsive de datatable
-    $("#modal_mas").modal('show');
-    document.getElementById('nro_expe').innerHTML = data.tramite_id;
-
-    //DATOS DEL REMITENTE
-    document.getElementById('txt_dni').value=data.remitente_dni;
-    document.getElementById('txt_nom').value=data.remitente_nombre;
-    document.getElementById('txt_apepat').value=data.remitente_apepat;
-    document.getElementById('txt_apemat').value=data.remitente_apemat;
-    document.getElementById('txt_celular').value=data.remitente_celular;
-    document.getElementById('txt_email').value=data.remitente_email;
-    document.getElementById('txt_dire').value=data.remitente_direccion;
-    if(data.tramite_doc_representacion.toUpperCase() == "A NOMBRE PROPIO"){
-        $("#rad_presentacion1").prop('checked',true);
-        document.getElementById('div_juridico').style.display = "none";
-    }
-    if(data.tramite_doc_representacion.toUpperCase() == "A OTRA PERSONA NATURAL"){
-        $("#rad_presentacion2").prop('checked',true);
-        document.getElementById('div_juridico').style.display = "none";
-    }
-    if(data.tramite_doc_representacion.toUpperCase() == "PERSONA JURÍDICA"){
-        $("#rad_presentacion3").prop('checked',true);
-        document.getElementById('div_juridico').style.display = "block";
-    }
-    document.getElementById('rad_presentacion1').value=data.tramite_doc_representacion;
-    document.getElementById('rad_presentacion2').value=data.tramite_doc_representacion;
-    document.getElementById('rad_presentacion3').value=data.tramite_doc_representacion;
-    document.getElementById('txt_ruc').value=data.tramite_doc_ruc;
-    document.getElementById('txt_razon').value=data.tramite_doc_razon;
-
-    //DATOS DEL DOCUMENTO
-    //  AQUI RECARGAS LAS AREAS antes de asignar valor
-    Cargar_select_Area(function(){
-        $("#select_area_p").select2().val(data.area_origen).trigger('change.select2');
-        $("#select_area_d").select2().val(data.area_destino).trigger('change.select2');
-    });
-    $("#select_tipo").select2().val(data.tipodocumento_id).trigger('change.select2');
-    document.getElementById('txt_ndocumento').value=data.tramite_nrodocumento;
-    document.getElementById('txt_folio').value=data.tramite_folio;
-    document.getElementById('txt_asunto').value=data.tramite_asunto;
-
-    if (data.tramite_archivo && data.tramite_archivo !== "") {
-    document.getElementById('tab_archivo').innerHTML = `
-        <p><strong>Documento Adjunto:</strong></p>
-        <a href="/sw_tramite/${data.tramite_archivo}" target="_blank">📄 Ver documento</a>`;
-    } else {
-        document.getElementById('tab_archivo').innerHTML = `
-            <p>No se adjuntó ningún documento.</p>
-        `;
+$('#tabla_tramite').on('click', '.mas', function () {
+    var data = tbl_tramite.row($(this).closest('tr')).data();
+    if (tbl_tramite.row(this).child.isShown()) {
+        data = tbl_tramite.row(this).data(); // Modo responsive
     }
 
-})
+    prepararYMostrarModalMas(data); // ← Aquí llamas la función encapsulada
+});
 
 $('#tabla_tramite').on('click','.accion',function(){
     var data = tbl_tramite.row($(this).parents('tr')).data();//En tamaño escritorio
@@ -166,99 +269,6 @@ $('#tabla_tramite').on('click','.archivar',function(){
     $("#modalarchivar").modal('show');
     document.getElementById('nro_expe3').innerHTML = data.tramite_id;   
 })
-
-
-function Cargar_select_Area(callback){
-    $.ajax({
-        "url":"../controller/usuario/controlador_cargar_select_area.php",
-        type:'POST',
-    }).done(function(resp){
-        let data = JSON.parse(resp);
-        let cadena = "";
-
-        if(data.length>0){
-            for (let i = 0; i < data.length; i++) {
-                cadena+="<option value='"+data[i][0]+"'>"+data[i][1]+"</option>";
-            }
-        }else{
-            cadena+="<option value=''>No hay areas disponibles</option>";
-        }
-
-        document.getElementById('select_area_p').innerHTML=cadena;
-        document.getElementById('select_area_d').innerHTML=cadena;
-
-        if (callback) callback(); // ← ejecuta luego de terminar
-    });
-}
-
-// function Cargar_select_Area(usuareaid){
-//     $.ajax({
-//         "url":"../controller/usuario/controlador_cargar_select_area.php",
-//         type:'POST',
-//     }).done(function(resp){
-//         let data = JSON.parse(resp);
-//         if(data.length>0){
-//             let cadena = "<option value=' ' selected disabled>Seleccione un Area</option>";
-//             for (let i = 0; i < data.length; i++) {
-//                 if (data[i][0] != usuareaid) { // Excluye el área actual
-//                     cadena += "<option value='" + data[i][0] + "'>" + data[i][1] + "</option>";
-//                 }
-//             }
-//             // document.getElementById('select_area_p').innerHTML=cadena;
-//             document.getElementById('select_area_d').innerHTML=cadena;
-//         }else{
-//             cadena+="<option value=''>No hay areas disponibles</option>";
-//             // document.getElementById('select_area_p').innerHTML=cadena;
-//             document.getElementById('select_area_d').innerHTML=cadena;
-//         }
-//     })
-// }
-
-function Cargar_Select_Tipo(){
-    $.ajax({
-        "url":"../controller/tramite/controlador_cargar_select_tipo.php",
-        type:'POST',
-    }).done(function(resp){
-        let data = JSON.parse(resp);
-        if(data.length>0){
-            let cadena = "<option value=' ' selected disabled>SELECCIONAR TIPO DOCUMENTO</option>";
-            for (let i = 0; i < data.length; i++) {
-                cadena+="<option value='"+data[i][0]+"'>"+data[i][1]+"</option>";
-            }
-            document.getElementById('select_tipo').innerHTML=cadena;
-        }else{
-            cadena+="<option value=''>No hay areas disponibles</option>";
-            document.getElementById('select_tipo').innerHTML=cadena;
-        }
-    })
-}
-
-//Este es para el momento de derivar
-function Cargar_select_Area_Destino(id){
-    $.ajax({
-        "url":"../controller/usuario/controlador_cargar_select_area.php",
-        type:'POST',
-        data: {
-            id:id
-        }
-    }).done(function(resp){
-        let data = JSON.parse(resp);
-        if(data.length>0){
-            let cadena = "<option value=' ' selected disabled>Seleccione un Area</option>";
-            for (let i = 0; i < data.length; i++) {
-                if(data[i][0] != id){
-                    cadena+="<option value='"+data[i][0]+"'>"+data[i][1]+"</option>";
-                }
-            }
-            document.getElementById('select_area_d').innerHTML=cadena;
-            document.getElementById('select_area_d_deri').innerHTML=cadena;
-        }else{
-            cadena+="<option value=''>No hay areas disponibles</option>";
-            document.getElementById('select_area_d').innerHTML=cadena;
-            document.getElementById('select_area_d_deri').innerHTML=cadena;
-        }
-    })
-}
 
 
 var tbl_seguimiento;
@@ -387,36 +397,6 @@ function Registrar_Derivacion(){
     return false;
 }
 
-
-function cargar_datos_usuario_logueado() {
-    let idusuario = document.getElementById('txtprincipalid').value;
-
-    $.ajax({
-        url: '../controller/tramite_area/controlador_cargar_datos_persona_usuario.php',
-        type: 'POST',
-        data: { idusuario: idusuario },
-        success: function(resp) {
-            let data = JSON.parse(resp);
-
-            if (data) {
-                document.getElementById('txt_dni').value = data.per_nrodocumento;
-                document.getElementById('txt_nom').value = data.per_nombre;
-                document.getElementById('txt_apepat').value = data.per_apepat;
-                document.getElementById('txt_apemat').value = data.per_apemat;
-                document.getElementById('txt_celular').value = data.per_movil;
-                document.getElementById('txt_email').value = data.per_email;
-                document.getElementById('txt_dire').value = data.per_direccion;
-
-                // Seleccionamos automáticamente su área de origen
-                // document.getElementById('txt_area_p').value = data.area_nombre;
-
-                Cargar_select_Area_Destino(data.area_id);
-                $("#select_area_p").select2().val(data.area_id).trigger('change.select2');
-            }
-        }
-    });
-}
-
 function Registrar_Tramite(){
     //capturando datos
     //Datos del remitente
@@ -519,7 +499,6 @@ function Registrar_Tramite(){
 
 
 function cambiarEstadoTramite(nuevoEstado,data) {
-    let area_origen = data.area_origen;
     let area_destino = data.area_destino;
     let idtramite = document.getElementById('nroexpe_acept').value;
     let descripcion = document.getElementById('des').value;
@@ -533,7 +512,6 @@ function cambiarEstadoTramite(nuevoEstado,data) {
             estado: nuevoEstado,
             descripcion: descripcion,
             idusuario: idusuario,
-            area_origen: area_origen,     // ← asegúrate que estos datos existan
             area_destino: area_destino
         }
     }).done(function(resp) {

@@ -1,5 +1,7 @@
 <?php
 session_start();
+
+date_default_timezone_set('America/Lima');
 ?>
 <script src="../js/console_tramite_area.js?rev=<?php echo time(); ?>"></script>
 <!-- Content Header (Page header) -->
@@ -31,20 +33,44 @@ session_start();
           <!-- /.card-header -->
           <div class="card-header">
             <h3 class="card-title card-header-title" style="font-size: 1.3rem;"><b>Listado de Trámites</b></h3>
-            <div style="float:right;">
+            <!-- <div style="float:right;">
               <label>Listar por: </label>
-              <select class="select-reporte select-info" id="select-vista-estado">
+              <select class="select-reporte select-info" id="">
+                <option value="">Todos</option>
                 <option value="PENDIENTE">PENDIENTE</option>
                 <option value="ACEPTADO">ACEPTADO</option>
                 <option value="RECHAZADO">RECHAZADO</option>
                 <option value="ARCHIVADO">ARCHIVADO</option>
               </select>
-            </div>
+            </div> -->
           </div>
           <!-- /.card-body -->
           <div class="card-body">
-            <a Target="_blank" class="btn btn-flat btn-a bg-gray-dark" href="MPDF/REPORTE/reporte_tramite_area.php?usu_id=<?= $_SESSION['S_ID']; ?>" id="ReportUsu">
-              <i class="nav-iconfas fas fa-file-pdf"></i>&nbsp; Generar Reporte </a> <br><br>
+            <!-- <a Target="_blank" class="btn btn-flat btn-a bg-gray-dark" href="MPDF/REPORTE/reporte_tramite_area.php?usu_id=<?= $_SESSION['S_ID']; ?>" id="ReportUsu">
+              <i class="nav-iconfas fas fa-file-pdf"></i>&nbsp; Generar Reporte </a> <br><br> -->
+            <div class="row justify-content-center mb-3">
+              <div class="col-md-2">
+                <label>Fecha Inicio</label>
+                <input type="date" id="reporte_fecha_inicio" class="form-control" onchange="tbl_tramite.ajax.reload();">
+              </div>
+              <div class="col-md-2">
+                <label>Fecha Fin</label>
+                <input type="date" id="reporte_fecha_fin" class="form-control" onchange="tbl_tramite.ajax.reload();">
+              </div>
+    
+              <div class="col-md-2 text-center">
+                <label>&nbsp;</label><br>
+                <button class="btn btn-outline-danger w-100" onclick="generarReporteFiltrado()">
+                  <i class="fas fa-file-pdf">&nbsp;</i> Reporte Filtrado
+                </button>
+              </div>
+              <div class="col-md-2 text-center">
+                <label>&nbsp;</label><br>
+                <a target="_blank" class="btn btn-outline-dark w-100" href="MPDF/REPORTE/reporte_tramite_area.php?usu_id=<?= $_SESSION['S_ID']; ?>">
+                  <i class="fas fa-file-pdf">&nbsp;</i> Reporte General
+                </a>
+              </div>
+            </div>
             <table id="tabla_tramite" class="table table-hover table-data">
               <thead>
                 <tr>
@@ -56,7 +82,7 @@ session_start();
                   <th rowspan="2" class="align-middle">Mas datos</th>
                   <th rowspan="2" class="align-middle">Seguimiento</th>
                   <th rowspan="2" class="align-middle">Estado Documento</th>
-                  <th rowspan="2" class="align-middle">Acción</th>
+                  <!-- <th rowspan="2" class="align-middle">Acción</th> -->
                 </tr>
                 <tr>
                   <th>DNI</th>
@@ -294,7 +320,7 @@ session_start();
             <div class="form-group">
               <label>Fecha: </label><span class="span-red"> (*)</span>
               <div class="input-group date" id="reservationdate" data-target-input="nearest">
-                <input class="input-date" readonly="" type="text" id="datepicker1" value="<?php echo $fechaActual = date('d/m/Y') ?>">
+                <input class="input-date" readonly="" type="text" id="datepicker1" value="<?php echo $fechaActual = date('d/m/Y'); ?>">
                 <div class="input-group-append" data-target="#reservationdate" data-toggle="datetimepicker">
                   <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                 </div>
@@ -374,7 +400,7 @@ session_start();
             <div class="form-group">
               <label>Fecha: </label><span class="span-red"> (*)</span>
               <div class="input-group date" id="reservationdate_ar" data-target-input="nearest">
-                <input class="input-date" readonly="" type="text" id="datepicker1_ar" value="<?php echo $fechaActual = date('d/m/Y') ?>">
+                <input class="input-date" readonly="" type="text" id="datepicker1_ar" value="<?php echo $fechaActual = date('d/m/Y'); ?>">
                 <div class="input-group-append" data-target="#reservationdate" data-toggle="datetimepicker">
                   <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                 </div>
@@ -481,13 +507,8 @@ session_start();
 
 <script>
   $(document).ready(function() {
-    listar_tramite($('#select-vista-estado').val());
+    listar_tramite();  // Inicializa la tabla
     $('.js-example-basic-single').select2();
-
-    $('#select-vista-estado').change(function() {
-      let estadoSeleccionado = $(this).val();
-      listar_tramite(estadoSeleccionado); // recarga DataTable filtrando
-    });
   });
   Cargar_Select_Tipo();
   Cargar_select_Area();
@@ -508,5 +529,16 @@ session_start();
   document.getElementById("btnRechazar").addEventListener("click", function() {
     cambiarEstadoTramite("RECHAZADO", dataGlobal);
   });
-  
+
+  function generarReporteFiltrado() {
+    let fechaInicio = $("#reporte_fecha_inicio").val();
+    let fechaFin = $("#reporte_fecha_fin").val();
+    let usuId = <?= $_SESSION['S_ID']; ?>; // Suponiendo que tienes el ID de usuario en la sesión
+
+    // Crear la URL del reporte con los filtros aplicados
+    let url = `MPDF/REPORTE/reporte_tramite_area_filtrado.php?usu_id=${usuId}&fi=${fechaInicio}&ff=${fechaFin}`;
+
+    // Redirigir al usuario al reporte
+    window.open(url, '_blank');
+  }
 </script>

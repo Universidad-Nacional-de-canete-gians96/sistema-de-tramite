@@ -50,6 +50,7 @@ function iniciar_sesion() {
           idusuario: data[0][0],
           usu: data[0][1],
           rol: data[0].usu_rol,
+          area: data[0].area_id,
           area_nombre: data[0].area_nombre,
           usu_persona: data[0].usu_persona, 
         },
@@ -92,7 +93,7 @@ function iniciar_sesion() {
 
 function salir() {
   window.location =
-    "/sw_tramite/controller/usuario/controlador_cerrar_sesion.php"; //pagina donde tienes tus consultas para borrar
+    "/controller/usuario/controlador_cerrar_sesion.php"; //pagina donde tienes tus consultas para borrar
 }
 
 var tbl_usuario; // lo declaramos como una variable global
@@ -432,7 +433,7 @@ function Traer_Datos_Seguimiento(){
     return Swal.fire("Mensaje de Advertencia!","Llene los campos vacíos","warning");
   }
   $.ajax({ //Realizar la Petición AJAX para Obtener los Datos
-      "url":"controller/usuario/controlador_traer_seguimiento.php", //Especifica la URL del controlador que obtendrá los datos desde la base de datos.
+      "url":"/controller/usuario/controlador_traer_seguimiento.php", //Especifica la URL del controlador que obtendrá los datos desde la base de datos.
       type:'POST',
       data: {
         numero:numero,
@@ -443,14 +444,26 @@ function Traer_Datos_Seguimiento(){
       var cadena = "";
       if(data.length>0){ //Verifica si la respuesta contiene registros.
         document.getElementById("div_buscador").style.display = "block";
-        document.getElementById('lbl_titulo').innerHTML = "<b>Seguimiento del Trámite: "+data[0][0]+"-"+data[0][2]+"</b>"
+        document.getElementById("div_detalle_tramite").style.display = "block";  // ← mostramos el card naranja
+
+        // Rellenar los datos en las celdas
+        document.getElementById("celdaexpe").innerText = data[0][0];     // ID Trámite
+        document.getElementById("celdanro").innerText = data[0][1];      // N° Documento
+        document.getElementById("celdatipo").innerText = data[0][6];     // Tipo documento
+        document.getElementById("celdasunto").innerText = data[0][5];    // Asunto
+
+        document.getElementById("celdadni").innerText = data[0][2];      // DNI
+        document.getElementById("celdanombre").innerText = data[0][3];   // Apellidos y nombres
+        document.getElementById("celdaruc").innerText = data[0][7];      // RUC
+        document.getElementById("celdaenti").innerText = data[0][8];     // Entidad
+        document.getElementById('lbl_titulo').innerHTML = "<b>Seguimiento del Trámite: "+data[0][0]+"-"+data[0][3]+"</b>"
           cadena = '<div class="timeline">'+
                         '<div class="time-label" >'+
-                          '<span class="bg-red">'+data[0][3]+'</span>'+
+                          '<span class="bg-red">'+'Fecha Inicio: &nbsp;'+data[0][4]+'</span>'+
                         '</div>'; 
             //Ajax para el detalle del seguimiento            
             $.ajax({ //Realizar la Petición AJAX para Obtener los Datos
-                  "url":"controller/usuario/controlador_traer_seguimiento_detalle.php", //Especifica la URL del controlador que obtendrá los datos desde la base de datos.
+                  "url":"/controller/usuario/controlador_traer_seguimiento_detalle.php", //Especifica la URL del controlador que obtendrá los datos desde la base de datos.
                   type:'POST',
                   data: {
                     codigo:data[0][0]
@@ -462,8 +475,8 @@ function Traer_Datos_Seguimiento(){
                         cadena+='<div>'+
                                   '<i class="fas fa-envelope bg-blue"></i>'+
                                   '<div class="timeline-item">'+
-                                    '<span class="time"><i class="fas fa-clock"></i>'+datadetalle[i][3]+'</span>'+
-                                    '<h3 class="timeline-header"><a href="#">El Documento fue derivado al Area: '+datadetalle[i][2]+
+                                    '<span class="time"><i class="fas fa-clock"></i><b>&nbsp;'+datadetalle[i][3]+'</b></span>'+
+                                    '<h3 class="timeline-header"><a href="#">Ubicación del Trámite: '+datadetalle[i][2]+
                                     '</a> - <b>Estado: '+datadetalle[i][5]+' </b></h3>'+
                                     '<div class="timeline-body">'+datadetalle[i][4]+''+
                                     '</div>'+
@@ -480,6 +493,8 @@ function Traer_Datos_Seguimiento(){
           for (let i = 0; i < data.length; i++) { 
              
           }
+
+          console.log(data);
           
       }else{
         document.getElementById("div_buscador").style.display = "none";
